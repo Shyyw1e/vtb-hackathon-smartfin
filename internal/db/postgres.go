@@ -7,7 +7,7 @@ import (
 
 	"github.com/Shyyw1e/vtb-hackathon-smartfin/pkg/logger"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -74,7 +74,7 @@ func Close(pool *pgxpool.Pool) {
 	logger.Log.Info("Close: postgres pool closed")
 }
 
-func WithTx(ctx context.Context, pool *pgxpool.Pool, fn func(ctx context.Context, tx pgx.Tx) error) (retErr error) {
+func WithTx(ctx context.Context, pool PoolIface, fn func(ctx context.Context, tx pgx.Tx) error) (retErr error) {
 	if pool == nil {
 		return fmt.Errorf("WithTx: pool is nil")
 	}

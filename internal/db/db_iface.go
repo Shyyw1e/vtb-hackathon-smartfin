@@ -12,3 +12,14 @@ type DBPool interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
+
+type TxIface interface {
+  Commit(ctx context.Context) error
+  Rollback(ctx context.Context) error
+}
+
+type PoolIface interface {
+  Begin(ctx context.Context) (pgx.Tx, error)
+  Ping(ctx context.Context) error
+}
+
