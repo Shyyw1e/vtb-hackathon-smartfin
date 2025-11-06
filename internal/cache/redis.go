@@ -68,7 +68,7 @@ func (s *store) Del(ctx context.Context, keys ...string) error {
         return err
     }
     if n > 0 {
-        logger.Log.Infof("Redis:\tdeleted %d keys", n)
+        logger.Log.Debugf("Redis:\tdeleted %d keys", n)
     }
     return nil
 }
@@ -106,7 +106,7 @@ func (s *store) GetJSON(ctx context.Context, key string, dest interface{}) (bool
 	b, err := s.client.Get(ctx, key).Bytes()
 	if err != nil{
 		if err == redis.Nil {
-			logger.Log.Info("Redis:\t Get key: not found")
+			logger.Log.Debug("Redis:\t Get key: not found")
 			return false, nil
 		}
 		logger.Log.Errorf("Redis:\t Get key:%v", err)
@@ -169,6 +169,6 @@ func (s *store) IncrWithExpire(ctx context.Context, key string, expire time.Dura
         _ = s.client.Expire(ctx, key, expire).Err()
     }
 
-	logger.Log.Info("Redis:\tIncremented")
+	logger.Log.Debug("Redis:\tIncremented")
     return n, nil
 }
