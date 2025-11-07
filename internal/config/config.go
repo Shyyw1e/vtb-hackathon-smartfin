@@ -17,6 +17,7 @@ import (
 type AppConfig struct {
 	Name     string         `mapstructure:"name"`
 	Env      string         `mapstructure:"env"`
+	TeamID   string         `mapstructure:"team_id"`
 	HTTP     HTTPConfig     `mapstructure:"http"`
 	Features FeaturesConfig `mapstructure:"features"`
 }
