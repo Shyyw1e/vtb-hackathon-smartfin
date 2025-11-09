@@ -47,7 +47,6 @@ func NewAuthn(pemStr string) (*Authn, error) {
 func (a *Authn) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		// Dev-хак: разрешить X-Debug-User когда нет токена (локально)
 		if hdr := r.Header.Get("X-Debug-User"); hdr != "" {
 			if id, err := uuid.Parse(hdr); err == nil {
 				ctx := context.WithValue(r.Context(), CtxUserID, id)

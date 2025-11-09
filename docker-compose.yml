@@ -1,0 +1,118 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartfin-postgres
+    environment:
+      POSTGRES_USER: ${DBUSER}
+      POSTGRES_PASSWORD: ${DBPASSWORD}
+      POSTGRES_DB: ${DATABASE}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${DBPORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DBUSER} -d ${DATABASE}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: migrate/migrate:4
+    container_name: smartfin-migrate
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://${DBUSER}:${DBPASSWORD}@postgres:5432/${DATABASE}?sslmode=disable",
+      "up"
+    ]
+    volumes:
+      - ./migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  redis:
+    image: redis:7-alpine
+    container_name: smartfin-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: ./build/api.Dockerfile
+    container_name: smartfin-api
+    environment:
+      # ── базовые настройки
+      CONFIG: /app/config/config.yaml
+      APP_TEAM_ID: ${APP_TEAM_ID}
+
+      # ── Postgres/Redis
+      POSTGRES_DSN: postgres://${DBUSER}:${DBPASSWORD}@postgres:5432/${DATABASE}?sslmode=disable
+      REDIS_ADDR: redis:6379
+
+      # ── Security (sample; в проде через секреты)
+      SECURITY_ML_SHARED_SECRET: ${SECURITY_ML_SHARED_SECRET}
+      SECURITY_ENCRYPT_KEY_HEX: ${SECURITY_ENCRYPT_KEY_HEX}
+
+      # ── Банковские креды (одинаковые для песочницы)
+      BANKS_VBANK_CLIENT_ID: ${BANK_CLIENT_ID}
+      BANKS_VBANK_CLIENT_SECRET: ${BANK_CLIENT_SECRET}
+      BANKS_ABANK_CLIENT_ID: ${BANK_CLIENT_ID}
+      BANKS_ABANK_CLIENT_SECRET: ${BANK_CLIENT_SECRET}
+      BANKS_SBANK_CLIENT_ID: ${BANK_CLIENT_ID}
+      BANKS_SBANK_CLIENT_SECRET: ${BANK_CLIENT_SECRET}
+    ports:
+      - "${API_PORT}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health | grep -q ok"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  ml:
+    build:
+      context: ./internal/ml
+      dockerfile: Dockerfile
+    container_name: smartfin-ml
+    environment:
+      PORT: ${ML_PORT}
+    ports:
+      - "${ML_PORT}:${ML_PORT}"
+
+  swagger:
+    image: swaggerapi/swagger-ui:latest
+    container_name: smartfin-swagger
+    environment:
+      SWAGGER_JSON: /spec/openapi.yaml
+    volumes:
+      - ./api/openapi.yaml:/spec/openapi.yaml:ro
+    ports:
+      - "${SWAGGER_PORT}:8080"
+
+  apk:
+    image: nginx:alpine
+    container_name: smartfin-apk
+    volumes:
+      - ./dist-apk:/usr/share/nginx/html:ro  # положи сюда .apk
+    ports:
+      - "${APK_PORT}:80"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
